@@ -2,7 +2,7 @@
 name: webnovel-short-studio
 description: 专为 5 万字以内高概念脑洞短篇网文设计的一体化创作工作室，内置「超短篇（1–3万字，盐选/番茄短故事）」与「微短剧式短中篇（2–5万字，分章强卡点）」两套节奏模板。涵盖脑洞压测、一页高概念规则卡、爽感叠加节拍表、单篇原声定调、手机竖屏短段与语言推进正文写作、分布级网感体检及纯净 DOCX/TXT 导出。默认简体中文。不用于 50 万字厚重世界观推演或传统出版长篇（请使用 story-world-architect / story-outline-architect / story-prose-writer），也不内置扫榜爬虫或洗稿仿写。
 metadata:
-  version: "1.2.0"
+  version: "1.2.1"
 ---
 
 # 短篇网文与微短剧爽文创作室
@@ -28,7 +28,7 @@ metadata:
 | `voice` | 开写前定调、试写或避免撞声口 | 围绕开头试写 300–500 字校准温度感与语感，截取 200–300 字原声切片写入设定卡；若用户要求“先试写”则写完前 2 章停顿待审 | [mobile-prose-and-voice.md](references/mobile-prose-and-voice.md)、[emotion-and-tension.md](references/emotion-and-tension.md) |
 | `draft` | 正式撰写或续写章节/分节正文 | 读本篇设定节拍 + 声口切片 + 轻量状态卡，以手机网感与活人感细节写纯净正文（临场龙套降噪、章名不剧透；默认连贯写完全文） | [mobile-prose-and-voice.md](references/mobile-prose-and-voice.md)、[emotion-and-tension.md](references/emotion-and-tension.md)、[naming-and-titling.md](references/naming-and-titling.md) |
 | `check` | 检查网感、感染力、公文腔与连续性 | 运行 `lint_webnovel.py` 复核分布与公文腔信号，并按 B 轨签约编辑感染力与命名/标题清单审读精修（平台上传字数硬限仅按需开启） | [artifact-and-audit.md](references/artifact-and-audit.md)、[emotion-and-tension.md](references/emotion-and-tension.md)、[naming-and-titling.md](references/naming-and-titling.md) |
-| `export` | 汇总交付编辑审阅或平台发布 | 跨型谱定稿正式书名（或给 3 风格异构备选）与平台导语，竖扫目录章名后运行 `export_short.py` 导出纯净 `.docx` 与 `.txt` | [artifact-and-audit.md](references/artifact-and-audit.md)、[naming-and-titling.md](references/naming-and-titling.md) |
+| `export` | 汇总交付编辑审阅或平台发布 | 跨型谱定稿正式书名（或给 3 风格异构备选）与平台导语，竖扫目录章名后运行 `export_short.py` 导出纯净 `.docx` 与 `.txt`；若目标平台为 `qimao` / `fanqie` 或用户要求投稿信息，自动生成可直接照抄勾选的《投稿建书填表清单》 | [artifact-and-audit.md](references/artifact-and-audit.md)、[naming-and-titling.md](references/naming-and-titling.md)、[platform-submission-tags.md](references/platform-submission-tags.md) |
 
 ## 上游扫文雷达 / 拆文产物对接接口（可选）
 
@@ -76,10 +76,12 @@ python <skill-dir>/scripts/lint_webnovel.py --file <章节文件> --narrative <d
 （首章可加 `--first-chapter` 检查黄金前 500 字；整本复查可用 `--dir <正文目录>`；用户明确要求核查七猫上传单章 500–1500 字或标题 <18 字硬限时，再额外传入 `--platform qimao --check-title "<书名>"`。）
 - 按 [artifact-and-audit.md](references/artifact-and-audit.md) 完成 **A 轨工程体检 + B 轨签约编辑感染力审读**，只修真正的跑偏（出版长闷段、百字演讲腔、公文流程单腔、情绪真空、人物工具化），保留自然长短反差与感官温度；完成后用 5–10 行更新 `01_轻量状态.md`。
 
-### 5. 纯净导出（DOCX + TXT）
+### 5. 纯净导出（DOCX + TXT）与投稿建书填表清单
 
 ```text
 python <skill-dir>/scripts/export_short.py --chapters-dir <正文目录> --out-docx <交付目录>/<书名>_全文.docx --out-txt <交付目录>/<书名>_平台发布.txt --title <书名>
 ```
 
 导出默认采用屏幕轻读排版（`screen`），自动拦截残留工程标记；如仅需其中一种格式，传入对应参数即可。
+
+- **平台建书与投稿填表清单（`qimao` / `fanqie` 自动触发或按需开启）**：除导出 `.docx` 与 `.txt` 外，若目标平台为 `qimao`（七猫短故事）或 `fanqie`（番茄小说），或用户明确要求生成投稿信息，须读取 [platform-submission-tags.md](references/platform-submission-tags.md)，结合 `00_脑洞与节拍.md` 与定稿正文自动生成并输出**《投稿建书填表清单》**（可同步保存为 `<交付目录>/{书名}_投稿建书清单.md`），内容涵盖：**作品名称（附字数校验）、目标读者/频道、主分类/一二级分类、按组列出的平台原词推荐标签（附简要原因与避坑提示）、主角名、作品简介（及内容声明）**，严格从预设词库原词勾选，杜绝自造标签与跨频道误选。

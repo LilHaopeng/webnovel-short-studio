@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | **English**
 
-An all-in-one Agent Skill for high-concept short webnovels and micro-drama fiction under 50,000 words. Ships with two battle-tested pacing templates—**Flash Short Fiction (`flash`, 8k–30k words for Zhihu Yanyan / Fanqie / Qimao)** and **Micro-Drama Serialized Shorts (`microdrama`, 20k–50k words across 10–25 cliffhanger chapters)**—covering 5-question stress testing, emotional resonance & anti-bureaucratic-jargon craft, anti-AI character naming & non-spoiler titling standards, per-story voice calibration, distribution-based pacing diagnostics, and clean DOCX/TXT export. Current version: **v1.2.0**.
+An all-in-one Agent Skill for high-concept short webnovels and micro-drama fiction under 50,000 words. Ships with two battle-tested pacing templates—**Flash Short Fiction (`flash`, 8k–30k words for Zhihu Yanyan / Fanqie / Qimao)** and **Micro-Drama Serialized Shorts (`microdrama`, 20k–50k words across 10–25 cliffhanger chapters)**—covering 5-question stress testing, emotional resonance & anti-bureaucratic-jargon craft, anti-AI character naming & non-spoiler titling standards, per-story voice calibration, distribution-based pacing diagnostics, clean DOCX/TXT export, and platform-ready submission metadata checklists. Current version: **v1.2.1**.
 
 By default, the skill writes in **Simplified Chinese (`简体中文`)** and automatically adapts quotation mark conventions (`“”` by default, or `「」` for Zhihu Yanyan).
 
@@ -17,7 +17,7 @@ By default, the skill writes in **Simplified Chinese (`简体中文`)** and auto
 - **Per-Story Voice Tuning Fork**: Calibrates a fresh 300–500 character opening sample before full drafting and stores an approved 200–300 character excerpt in `00_脑洞与节拍.md` so each short story maintains its own distinct voice.
 - **Distribution-Based Mobile Readability Linter**: `lint_webnovel.py` inspects chapter-wide paragraph length distributions, dialogue momentum, opening 500-character hook density, and cliché clusters as a diagnostic mirror—never forcing mechanical paragraph splitting.
 - **Upstream Market Radar Integration**: Directly consumes `选题简报.md` / `扫榜报告.md` from `webnovel-market-radar` while enforcing anti-plagiarism isolation (adopting market-validated emotional hooks and pacing ratios while mandating original premise and character invention).
-- **Clean DOCX & TXT Export**: `export_short.py` compiles chapters into screen-friendly `.docx` and platform-ready `.txt` files while blocking internal workbench markers.
+- **Clean DOCX/TXT Export & Platform Submission Checklists**: `export_short.py` compiles chapters into screen-friendly `.docx` and platform-ready `.txt` files while blocking internal workbench markers; when exporting for `qimao` or `fanqie`, automatically generates a ready-to-paste submission form checklist drawn strictly from verified preset tag vocabularies ([platform-submission-tags.md](skills/webnovel-short-studio/references/platform-submission-tags.md)) with channel isolation and anti-pitfall checks.
 
 ## Companion Studio Pipeline
 
