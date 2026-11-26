@@ -2,13 +2,15 @@
 
 **简体中文** | [English](README_EN.md)
 
-专为 5 万字以内高概念脑洞短篇网文设计的一体化创作 Agent Skill：内置**超短篇（0.8–3 万字，知乎盐言 / 番茄短故事）**与**微短剧式短中篇（2–5 万字，10–25 章强卡点）**两套节奏模板，涵盖脑洞 4 问压测、一页高概念规则卡、爽感叠加节拍表、单篇原声定调、手机竖屏短段与语言推进正文写作、分布级网感体检及纯净 DOCX/TXT 导出。当前版本 **v1.1.0**。
+专为 5 万字以内高概念脑洞短篇网文设计的一体化创作 Agent Skill：内置**超短篇（0.8–3 万字，知乎盐言 / 番茄短故事 / 七猫强情绪爆文）**与**微短剧式短中篇（2–5 万字，10–25 章强卡点）**两套节奏模板，涵盖脑洞 5 问压测、一页高概念规则与关系卡、脉冲式爽感节拍表、情绪感染力与去公文腔写作法则、人物命名与标题/章名去 AI 味规范、分布级网感体检及纯净 DOCX/TXT 导出。当前版本 **v1.2.0**。
 
 默认采用**简体中文**起笔（默认全角双引号 `“”`；目标平台为**知乎盐言**或显式指定时自动切换为直角引号 `「」`）。
 
 ## 核心特性
 
-- **硬骨架，松表达（拒绝千文一面 AI 爽文腔）**：前端锁死反常识脑洞、清晰规则边界、多维度爽感叠加节拍、黄金前 500 字入局与章末硬钩子；后端仅锚定手机竖屏阅读媒介体感与本篇独立的 200–300 字原声切片，不设单段硬字数红线、不写死固定打脸反应模板。
+- **硬骨架，松表达，活人感（拒绝“无痛觉取证说明书”与千文一面 AI 腔）**：前端锁死反常识脑洞、**人物表里反差与真实人欲动机**、脉冲式微戏眼节拍（禁纯筹备水章）；后端通过 [情绪感染力与关系张力指南](skills/webnovel-short-studio/references/emotion-and-tension.md) 保留微感官温度差与真实痛觉，戒除密集公文/办件说明书腔。
+- **人物命名平衡与书名/章名去直述腔**：内置 [naming-and-titling.md](skills/webnovel-short-studio/references/naming-and-titling.md)，覆盖六大题材分支姓氏配额与高频意象字熔断；书名强制输出跨型谱异构 3 备选，章节名与书名职责分离（推荐 2–4 字词眼或纯序号无副标题，禁剧透总结与 `A与B` 连排体）。
+- **双轨签约编辑审稿 + 按需开关机制**：`lint_webnovel.py` 新增 `bureaucratic_jargon_density` 公文腔检测，叠加 B 轨签约编辑感染力硬审；**Gate 1 试写停顿与平台上传字数硬限（如 `--platform qimao --check-title`）均默认关闭、按需开启**，不打断正常全文创作流畅度。
 - **双体量节奏模板与三类叙事推进**：
   - `flash`（0.8–3 万字超短篇，适合盐选专栏/番茄短故事一口气读完）与 `microdrama`（2–5 万字微短剧式分章爽文，章章卡钩子）。
   - 支持 `dialogue`（强对话交锋型）、`first_person`（第一人称强叙述吐槽型）与 `rules`（规则怪谈/悬疑信息流型）三档网感基准。
@@ -87,9 +89,11 @@ python -B -m unittest discover -s tests -v
 
 ## 参考文档
 
-- [高概念脑洞压测与爽感节拍表](skills/webnovel-short-studio/references/concept-and-beats.md)：脑洞 4 问压测、一页规则卡、`flash`/`microdrama` 双轨节拍模板与爆款标题/导语公式。
+- [高概念脑洞压测与爽感节拍表](skills/webnovel-short-studio/references/concept-and-beats.md)：脑洞 5 问压测、一页规则与关系卡、`flash`/`microdrama` 脉冲节拍模板与异构标题/导语矩阵。
+- [情绪感染力、人物活人感与关系张力](skills/webnovel-short-studio/references/emotion-and-tension.md)：微感官温度差、保留痛觉、戒除公文办件腔、人物表里反差与零筹备水章脉冲节奏。
 - [手机竖屏语感与单篇原声定调](skills/webnovel-short-studio/references/mobile-prose-and-voice.md)：竖屏短段与语言推进、三类叙事通道、200–300 字原声切片与防套路复读。
-- [产物契约与分布级体检指南](skills/webnovel-short-studio/references/artifact-and-audit.md)：极简双文件工作台、`lint_webnovel.py` 指标解读与纯净导出规范。
+- [人物命名平衡与标题/章名规范](skills/webnovel-short-studio/references/naming-and-titling.md)：六大题材姓氏配额、高频意象字熔断、五大书名型谱与四套反剧透章名体制。
+- [产物契约与双轨体检指南](skills/webnovel-short-studio/references/artifact-and-audit.md)：极简双文件工作台、`lint_webnovel.py` 指标解读、B 轨签约编辑硬审与纯净导出规范。
 
 ## 隐私与许可证
 

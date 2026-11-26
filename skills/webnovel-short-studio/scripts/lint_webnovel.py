@@ -105,9 +105,20 @@ GLOBAL_CLICHES: list[tuple[str, re.Pattern[str], str]] = [
     ),
 ]
 
+# Bureaucratic / legal-checklist prose detector (catches emotion-draining paperwork narration
+# without penalizing natural crime/workplace fiction that avoids formal red-tape dumps)
+LONG_DOC_TITLE_RE = re.compile(r"《[^》\n]{9,}》")
+BUREAUCRATIC_TERM_RE = re.compile(
+    r"公证处?|公证员|存证|电子回执|回执|政务专线|实名专线|备案|核验|专网|"
+    r"追踪信标|物联网|镜像备份|加密硬盘|联合签章|签字权|终验|单方撤销|"
+    r"协议书|声明书|确认单|确认书|意向书|委托书|裁定书|保全裁定|划扣|"
+    r"查封|冻结名单|时间戳|哈希校验|工商变更|预审编号|前置关联"
+)
+
 NOTICE_TEXT = (
-    "本报告为网感分布体检镜子，不是必须清零的硬考题；"
+    "本报告为网感分布与去公文腔体检镜子，不是必须清零的硬考题；"
     "有意为之的长段蓄势、毒舌独白或规则清单请直接保留，严禁机械切段或凑水对话。"
+    "平台上传硬限参数（--platform / --min-raw-chars / --max-raw-chars / --check-title）默认关闭，仅在用户明确要求核查上传限制时按需开启。"
 )
 
 
@@ -164,6 +175,8 @@ def analyze_file(
     first_chapter: bool = False,
     target_words: int | None = None,
     tolerance: float = 0.20,
+    min_raw_chars: int | None = None,
+    max_raw_chars: int | None = None,
 ) -> tuple[list[Advisory], dict[str, Any]]:
     text = path.read_text(encoding="utf-8-sig", errors="replace")
     lines = text.splitlines()
@@ -180,6 +193,10 @@ def analyze_file(
             continue
         body_lines.append((idx, s))
 
+    body_joined = "\n".join(s for _, s in body_lines)
+    non_ws_chars = len(re.sub(r"\s+", "", body_joined))
+    raw_chars = len(body_joined)
+
     total_cjk = 0
     dialogue_cjk = 0
     para_lengths: list[int] = []
@@ -188,6 +205,8 @@ def analyze_file(
     long_speeches = 0
     double_quote_spans = 0
     corner_quote_spans = 0
+    long_doc_titles: list[tuple[int, str]] = []
+    bureaucratic_terms: list[tuple[int, str]] = []
 
     for line_no, para in body_lines:
         p_cjk = len(CJK_RE.findall(para))
@@ -195,6 +214,11 @@ def analyze_file(
             continue
         total_cjk += p_cjk
         para_lengths.append(p_cjk)
+
+        for m in LONG_DOC_TITLE_RE.finditer(para):
+            long_doc_titles.append((line_no, m.group(0)))
+        for m in BUREAUCRATIC_TERM_RE.finditer(para):
+            bureaucratic_terms.append((line_no, m.group(0)))
 
         spoken_spans = extract_spoken_spans(para)
         for sp in spoken_spans:
@@ -369,6 +393,29 @@ def analyze_file(
             )
         )
 
+    # 5.6 Bureaucratic / legal-checklist prose density check (drains emotional infection)
+    bureau_per_k = (len(bureaucratic_terms) / (total_cjk / 1000.0)) if total_cjk >= 400 else 0.0
+    if (
+        len(long_doc_titles) >= 3
+        or (len(long_doc_titles) >= 2 and (len(long_doc_titles) * 2 + len(bureaucratic_terms)) >= 7)
+        or (total_cjk >= 400 and len(bureaucratic_terms) >= 8 and bureau_per_k >= 6.5)
+    ):
+        sample_docs = "、".join(dict.fromkeys(tok for _, tok in long_doc_titles[:3]))
+        sample_terms = "、".join(dict.fromkeys(tok for _, tok in bureaucratic_terms[:5]))
+        first_hit_line = (
+            long_doc_titles[0][0]
+            if long_doc_titles
+            else (bureaucratic_terms[0][0] if bureaucratic_terms else 1)
+        )
+        advisories.append(
+            Advisory(
+                "bureaucratic_jargon_density",
+                first_hit_line,
+                f"超长书名号文件 {len(long_doc_titles)} 处（{sample_docs or '无'}），程序/公文词 {len(bureaucratic_terms)} 处（{sample_terms}，{bureau_per_k:.1f}/千字）",
+                "检测到较密集的公文/法务办件说明书腔，极易吸干情绪感染力；建议把超长文件名口语化简称、压缩手续描写，把笔墨还给角色当面的难堪、潜台词交锋与微感官刺痛。",
+            )
+        )
+
     # 6. Optional target word range reminder
     if target_words and target_words > 0:
         min_w = int(target_words * (1.0 - tolerance))
@@ -392,9 +439,31 @@ def analyze_file(
                 )
             )
 
+    # 7. Strictly OPT-IN platform upload character limit check (OFF by default!)
+    if min_raw_chars and total_cjk < min_raw_chars:
+        advisories.append(
+            Advisory(
+                "platform_chapter_length_limit",
+                1,
+                f"当前单章净汉字 {total_cjk} < 平台上传下限 {min_raw_chars}",
+                "已显式开启平台上传字数硬限核验：当前章节低于平台最低字数要求，可合并相邻短节或充实当下现场交锋。",
+            )
+        )
+    if max_raw_chars and (non_ws_chars > max_raw_chars or raw_chars > max_raw_chars):
+        advisories.append(
+            Advisory(
+                "platform_chapter_length_limit",
+                1,
+                f"当前单章含标点 {non_ws_chars} 字 / 含换行 {raw_chars} 字符（净汉字 {total_cjk}）> 平台上传上限 {max_raw_chars}",
+                "已显式开启平台上传字数硬限核验：当前章节超出平台单章上限，建议在自然悬念处拆章或微精简。",
+            )
+        )
+
     metrics: dict[str, Any] = {
         "narrative": narrative,
         "cjk_chars": total_cjk,
+        "non_ws_chars": non_ws_chars,
+        "raw_chars": raw_chars,
         "paragraphs": len(para_lengths),
         "mean_para_cjk": mean_para,
         "median_para_cjk": median_para,
@@ -405,6 +474,8 @@ def analyze_file(
         "dialogue_ratio": dialogue_ratio,
         "narration_wall_streaks": wall_streaks,
         "long_speech_monologues": long_speeches,
+        "long_doc_titles": len(long_doc_titles),
+        "bureaucratic_terms": len(bureaucratic_terms),
         "advisories": len(advisories),
     }
     return advisories, metrics
@@ -440,6 +511,15 @@ def main() -> int:
     )
     parser.add_argument("--target-words", type=int, default=0, help="可选单章参考汉字数")
     parser.add_argument("--tolerance", type=float, default=0.20, help="允许偏差比例（默认 0.20）")
+    parser.add_argument(
+        "--platform",
+        choices=("none", "qimao"),
+        default="none",
+        help="按需开启的平台上传硬限预设（默认 none 不开启；显式传入 qimao 时核验单章 500–1500 字与标题 <18 字）",
+    )
+    parser.add_argument("--min-raw-chars", type=int, default=0, help="按需开启的单章上传字数下限（默认 0 不开启）")
+    parser.add_argument("--max-raw-chars", type=int, default=0, help="按需开启的单章上传总字符上限（默认 0 不开启）")
+    parser.add_argument("--check-title", default="", help="按需开启的标题字数核验（配合 --platform qimao 检查是否 <18 字）")
     parser.add_argument("--json", action="store_true", help="输出 JSON 格式")
     args = parser.parse_args()
 
@@ -447,6 +527,26 @@ def main() -> int:
         parser.error("--target-words 不能为负数。")
     if not 0.0 <= args.tolerance <= 1.0:
         parser.error("--tolerance 必须在 0 到 1 之间。")
+    if args.min_raw_chars < 0 or args.max_raw_chars < 0:
+        parser.error("--min-raw-chars 和 --max-raw-chars 不能为负数。")
+
+    eff_min_raw = args.min_raw_chars or (500 if args.platform == "qimao" else 0)
+    eff_max_raw = args.max_raw_chars or (1500 if args.platform == "qimao" else 0)
+
+    title_advisories: list[dict[str, Any]] = []
+    if args.check_title.strip():
+        t = args.check_title.strip()
+        if args.platform == "qimao" and len(t) >= 18:
+            title_advisories.append(
+                asdict(
+                    Advisory(
+                        "platform_title_length_limit",
+                        0,
+                        f"书名《{t}》共 {len(t)} 字（含标点/字母），不满足七猫 <18 字上传要求",
+                        "请将标题精简至 17 字以内（含标点与字母）。",
+                    )
+                )
+            )
 
     targets: list[tuple[Path, bool]] = []
     if args.file:
@@ -477,6 +577,8 @@ def main() -> int:
             first_chapter=is_first,
             target_words=args.target_words or None,
             tolerance=args.tolerance,
+            min_raw_chars=eff_min_raw or None,
+            max_raw_chars=eff_max_raw or None,
         )
         total_cjk_all += int(metrics["cjk_chars"])
         results.append(
@@ -491,13 +593,18 @@ def main() -> int:
     if args.json:
         payload = {
             "notice": NOTICE_TEXT,
+            "platform_limit_check": args.platform,
             "files_scanned": len(results),
             "total_cjk_chars": total_cjk_all,
+            "title_advisories": title_advisories,
             "results": results,
         }
         print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:
         print(NOTICE_TEXT)
+        if title_advisories:
+            for adv in title_advisories:
+                print(f"[TITLE ADVISORY] ({adv['code']}): 「{adv['excerpt']}」 -> {adv['suggestion']}")
         if len(results) > 1:
             print(f"scanned={len(results)} total_cjk_chars={total_cjk_all}")
         for item in results:
@@ -505,11 +612,12 @@ def main() -> int:
             print(f"\nfile={item['file']}")
             print(
                 "metrics "
-                f"narrative={m['narrative']} cjk={m['cjk_chars']} paras={m['paragraphs']} "
-                f"median_para={m['median_para_cjk']} mean_para={m['mean_para_cjk']} p90={m['p90_para_cjk']} "
+                f"narrative={m['narrative']} cjk={m['cjk_chars']} non_ws={m['non_ws_chars']} raw={m['raw_chars']} "
+                f"paras={m['paragraphs']} median_para={m['median_para_cjk']} mean_para={m['mean_para_cjk']} p90={m['p90_para_cjk']} "
                 f"short<=55={m['short_para_ratio_le55']*100:.1f}% heavy>95={m['heavy_para_ratio_gt95']*100:.1f}% "
                 f"dialogue={m['dialogue_ratio']*100:.1f}% walls={m['narration_wall_streaks']} "
-                f"long_speeches={m['long_speech_monologues']} advisories={m['advisories']}"
+                f"long_speeches={m['long_speech_monologues']} docs={m['long_doc_titles']} bureau={m['bureaucratic_terms']} "
+                f"advisories={m['advisories']}"
             )
             for adv in item["advisories"]:
                 print(

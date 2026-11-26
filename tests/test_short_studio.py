@@ -94,6 +94,68 @@ class WebnovelShortStudioTests(unittest.TestCase):
             self.assertTrue(out_txt.exists())
             self.assertIn("「我这辈子只爱你一个人。」", out_txt.read_text(encoding="utf-8"))
 
+    def test_bureaucratic_jargon_and_optin_platform_limits(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ch = root / "ch_jargon.md"
+            jargon_text = (
+                "# 第1章 核验\n\n"
+                "我打印了《婚内财产分割与公证保全委托协议书》《不动产抵押查封核验回执单》"
+                "和《涉案资金专网流水司法鉴证报告书》，逐份提交备案、存证、公证并申请司法冻结与查封。"
+                "对方收到传唤与回执后，我再次核验存证流水并办理冻结备案。"
+                + "他站在门外一言不发。" * 180
+            )
+            ch.write_text(jargon_text, encoding="utf-8")
+
+            # Default mode: detects bureaucratic_jargon_density, NO platform chapter length limit
+            r_def = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPTS_DIR / "lint_webnovel.py"),
+                    "--file",
+                    str(ch),
+                    "--narrative",
+                    "first_person",
+                    "--json",
+                ],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
+            self.assertEqual(r_def.returncode, 0, r_def.stderr)
+            d_def = json.loads(r_def.stdout)
+            codes_def = [a["code"] for a in d_def["results"][0]["advisories"]]
+            title_codes_def = [a["code"] for a in d_def["title_advisories"]]
+            self.assertIn("bureaucratic_jargon_density", codes_def)
+            self.assertNotIn("platform_chapter_length_limit", codes_def)
+            self.assertNotIn("platform_title_length_limit", title_codes_def)
+
+            # Opt-in Qimao mode: checks both chapter length and <18-char title limit
+            r_qm = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPTS_DIR / "lint_webnovel.py"),
+                    "--file",
+                    str(ch),
+                    "--narrative",
+                    "first_person",
+                    "--platform",
+                    "qimao",
+                    "--check-title",
+                    "这是一个超过十八个字用于测试七猫标题硬限的超长直述书名",
+                    "--json",
+                ],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
+            self.assertEqual(r_qm.returncode, 0, r_qm.stderr)
+            d_qm = json.loads(r_qm.stdout)
+            codes_qm = [a["code"] for a in d_qm["results"][0]["advisories"]]
+            title_codes_qm = [a["code"] for a in d_qm["title_advisories"]]
+            self.assertIn("platform_chapter_length_limit", codes_qm)
+            self.assertIn("platform_title_length_limit", title_codes_qm)
+
 
 if __name__ == "__main__":
     unittest.main()

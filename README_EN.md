@@ -2,13 +2,15 @@
 
 [简体中文](README.md) | **English**
 
-An all-in-one Agent Skill for high-concept short webnovels and micro-drama fiction under 50,000 words. Ships with two battle-tested pacing templates—**Flash Short Fiction (`flash`, 8k–30k words for Zhihu Yanyan / Fanqie Short Stories)** and **Micro-Drama Serialized Shorts (`microdrama`, 20k–50k words across 10–25 cliffhanger chapters)**—covering high-concept stress testing, a one-page rule & cast card, multi-dimensional payoff beat sheets, per-story voice calibration, mobile-first vertical prose, distribution-based pacing diagnostics, and clean DOCX/TXT export. Current version: **v1.1.0**.
+An all-in-one Agent Skill for high-concept short webnovels and micro-drama fiction under 50,000 words. Ships with two battle-tested pacing templates—**Flash Short Fiction (`flash`, 8k–30k words for Zhihu Yanyan / Fanqie / Qimao)** and **Micro-Drama Serialized Shorts (`microdrama`, 20k–50k words across 10–25 cliffhanger chapters)**—covering 5-question stress testing, emotional resonance & anti-bureaucratic-jargon craft, anti-AI character naming & non-spoiler titling standards, per-story voice calibration, distribution-based pacing diagnostics, and clean DOCX/TXT export. Current version: **v1.2.0**.
 
 By default, the skill writes in **Simplified Chinese (`简体中文`)** and automatically adapts quotation mark conventions (`“”` by default, or `「」` for Zhihu Yanyan).
 
 ## Key Capabilities
 
-- **Firm Skeleton, Flexible Expression**: Locks in counter-intuitive hooks, clear rule constraints, escalating payoff dimensions, a fast 500-character opening hook, and chapter-end cliffhangers upfront—while avoiding rigid single-paragraph word caps or recycled slap-in-the-face templates during drafting.
+- **Emotional Resonance & Anti-Bureaucratic Prose (`emotion-and-tension.md`)**: Preserves micro-sensory temperature contrasts, human vulnerability, realistic villain desires, and immediate scene stakes—preventing dry legal-report prose (`bureaucratic_jargon_density` detection in `lint_webnovel.py`) and dull evidence-gathering filler chapters.
+- **Anti-AI Naming & Diversified Titling (`naming-and-titling.md`)**: Enforces six genre-calibrated surname quotas, bans overused literary-surname + cliché-character combinations, outputs 3 heterogeneous title styles instead of repetitive clickbait sentences, and keeps chapter titles concise and spoiler-free.
+- **Opt-In Gates Without Drafting Friction**: Both Gate 1 (pause after Ch 1–2) and platform upload length limits (`--platform qimao --check-title`) are **off by default** and enabled strictly on request so sidebar constraints never disrupt drafting flow.
 - **Dual Pacing Templates & Three Narrative Modes**:
   - `flash` (8k–30k word single-sitting short stories) and `microdrama` (20k–50k word chaptered micro-drama fiction).
   - Supports `dialogue` (dialogue-driven confrontation), `first_person` (snappy first-person narrator), and `rules` (rule-horror / mystery information-flow) baselines.
