@@ -15,9 +15,12 @@ from typing import Any
 CJK_RE = re.compile(r"[\u4e00-\u9fff]")
 SCENE_BREAK_RE = re.compile(r"^\s*(?:\*\s*\*\s*\*|-{3,}|⸻|✦\s*✦\s*✦)\s*$")
 WORKBENCH_TOKEN_RE = re.compile(
-    r"\b(?:RULE|INST|FAC|CON|SEED|WS|WCR|ARC|SEQ|EVT|CH|LOOP|WLOOP|CR)-\d{3}\b"
-    r"|\[(?:待确认|待补充|待填|待试写确认后填入)\]|\{\{[^{}\n]+\}\}"
+    r"(?<![A-Za-z0-9_])(?:RULE|INST|FAC|HIST|CON|SEED|WS|WCR|REG|CHAR|ARC|SEQ|EVT|CH|LOOP|WLOOP|CR|F|T|S)-\d{2,3}(?![A-Za-z0-9_])"
+    r"|@(?:CHAR|LOC|PROP|VOICE)-\d{2,3}(?![A-Za-z0-9_])"
+    r"|\[(?:待确认|待补充|待填|待试写确认后填入)[^\]\n]*\]"
+    r"|\{\{[^{}\n]+\}\}"
 )
+CHAPTER_NUM_RE = re.compile(r"第\s*([0-9]+|[零〇一二两三四五六七八九十百千]+)\s*[章节回]")
 EXCLUDED_STEMS = {"00_脑洞与节拍", "01_轻量状态", "写作状态", "00_文风与声口卡", "readme", "license"}
 
 PAGE_SIZES_MM: dict[str, tuple[float, float, tuple[float, float, float, float]]] = {
@@ -25,6 +28,53 @@ PAGE_SIZES_MM: dict[str, tuple[float, float, tuple[float, float, float, float]]]
     "b5": (176.0, 250.0, (20.0, 19.0, 21.0, 21.0)),
     "a5": (148.0, 210.0, (17.0, 16.0, 18.0, 18.0)),
 }
+
+CN_DIGITS: dict[str, int] = {
+    "零": 0,
+    "〇": 0,
+    "一": 1,
+    "二": 2,
+    "两": 2,
+    "三": 3,
+    "四": 4,
+    "五": 5,
+    "六": 6,
+    "七": 7,
+    "八": 8,
+    "九": 9,
+}
+CN_UNITS: dict[str, int] = {"十": 10, "百": 100, "千": 1000}
+
+
+def parse_chapter_num_token(token: str) -> int | None:
+    if token.isdigit():
+        return int(token)
+    total = 0
+    current = 0
+    seen_unit = False
+    for ch in token:
+        if ch in CN_DIGITS:
+            current = CN_DIGITS[ch]
+        elif ch in CN_UNITS:
+            unit = CN_UNITS[ch]
+            seen_unit = True
+            if current == 0 and unit == 10 and total == 0:
+                current = 1
+            total += current * unit
+            current = 0
+        else:
+            return None
+    val = total + current
+    if val == 0 and not seen_unit and token not in ("零", "〇"):
+        return None
+    return val
+
+
+def extract_chapter_number(title: str) -> int | None:
+    m = CHAPTER_NUM_RE.search(title)
+    if not m:
+        return None
+    return parse_chapter_num_token(m.group(1))
 
 
 def natural_sort_key(path: Path) -> list[int | str]:
@@ -47,36 +97,27 @@ def discover_chapters(chapters_dir: Path) -> list[Path]:
 
 
 def parse_chapter(path: Path, default_index: int) -> tuple[str, list[tuple[str, str]]]:
-    raw = path.read_text(encoding="utf-8-sig")
+    raw = path.read_text(encoding="utf-8-sig", errors="replace")
     lines = raw.splitlines()
     chapter_title = ""
     blocks: list[tuple[str, str]] = []
-    para_buf: list[str] = []
-
-    def flush_para() -> None:
-        if para_buf:
-            blocks.append(("paragraph", "".join(para_buf)))
-            para_buf.clear()
 
     for line in lines:
         s = line.strip()
         if not s:
-            flush_para()
             continue
-        if not chapter_title and not blocks and not para_buf and s.startswith("# "):
+        if not chapter_title and not blocks and s.startswith("# "):
             chapter_title = re.sub(r"\s+#+\s*$", "", s[2:]).strip()
             continue
         if SCENE_BREAK_RE.match(s):
-            flush_para()
             blocks.append(("scene_break", "* * *"))
             continue
         if re.match(r"^#{2,6}\s+", s):
-            flush_para()
             sub = re.sub(r"^#{2,6}\s+|\s+#+\s*$", "", s).strip()
             blocks.append(("subheading", sub))
             continue
-        para_buf.append(s)
-    flush_para()
+        # Treat every non-empty body line as its own paragraph (matching lint_webnovel.py)
+        blocks.append(("paragraph", s))
 
     if not chapter_title:
         chapter_title = path.stem.replace("_", " ") or f"第{default_index}节"
@@ -87,9 +128,35 @@ def strip_inline_md(text: str) -> str:
     return re.sub(r"\*\*([^*]+)\*\*|\*([^*]+)\*", lambda m: m.group(1) or m.group(2), text)
 
 
+def check_chapter_sequence_warnings(
+    parsed: list[tuple[Path, str, list[tuple[str, str]]]]
+) -> list[str]:
+    warnings: list[str] = []
+    seen: dict[int, str] = {}
+    prev_num: int | None = None
+    prev_name: str = ""
+
+    for ch_path, ch_title, _ in parsed:
+        num = extract_chapter_number(ch_title)
+        if num is None:
+            continue
+        if num in seen:
+            warnings.append(
+                f"章节序号重复：第{num}章（{ch_path.name} 与 {seen[num]} 重复）"
+            )
+        elif prev_num is not None and num != prev_num + 1:
+            warnings.append(
+                f"章节序号跳号或乱序：第{prev_num}章（{prev_name}）-> 第{num}章（{ch_path.name}）"
+            )
+        seen.setdefault(num, ch_path.name)
+        prev_num = num
+        prev_name = ch_path.name
+    return warnings
+
+
 def parse_and_validate(
     chapter_paths: list[Path], allow_workbench_tokens: bool
-) -> tuple[list[tuple[Path, str, list[tuple[str, str]]]], int]:
+) -> tuple[list[tuple[Path, str, list[tuple[str, str]]]], int, list[str]]:
     parsed: list[tuple[Path, str, list[tuple[str, str]]]] = []
     leaks: list[str] = []
     total_cjk = 0
@@ -97,6 +164,9 @@ def parse_and_validate(
     for idx, ch_path in enumerate(chapter_paths, start=1):
         ch_title, blocks = parse_chapter(ch_path, idx)
         parsed.append((ch_path, ch_title, blocks))
+        if not allow_workbench_tokens:
+            for m in WORKBENCH_TOKEN_RE.finditer(ch_title):
+                leaks.append(f"{ch_path.name}(标题): {m.group(0)}")
         for _, b_text in blocks:
             total_cjk += len(CJK_RE.findall(b_text))
             if not allow_workbench_tokens:
@@ -106,9 +176,11 @@ def parse_and_validate(
     if leaks:
         preview = ", ".join(leaks[:5])
         raise ValueError(
-            f"检测到正文残留内部工程标记（{preview}）。请清理后再导出，或传入 --allow-workbench-tokens。"
+            f"检测到标题或正文残留内部工程标记（{preview}）。请清理后再导出，或传入 --allow-workbench-tokens。"
         )
-    return parsed, total_cjk
+
+    warnings = check_chapter_sequence_warnings(parsed)
+    return parsed, total_cjk, warnings
 
 
 def export_txt(
@@ -391,11 +463,12 @@ def main() -> int:
             chapters = discover_chapters(c_dir)
             inferred_title = args.title.strip() or c_dir.parent.name or "短篇网文"
 
-        parsed, total_cjk = parse_and_validate(chapters, args.allow_workbench_tokens)
+        parsed, total_cjk, warnings = parse_and_validate(chapters, args.allow_workbench_tokens)
         result: dict[str, Any] = {
             "title": inferred_title,
             "chapters": len(parsed),
             "cjk_chars": total_cjk,
+            "warnings": warnings,
         }
         if args.out_docx:
             result.update(
@@ -422,6 +495,8 @@ def main() -> int:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
 
+    for w in warnings:
+        print(f"[WARNING] {w}", file=sys.stderr)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0
 
